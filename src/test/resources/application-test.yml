@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: SmartShopV2Test
+  
+  # Test database - H2 in-memory  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  # JPA configuration for tests
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # Disable DevTools in tests
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+# Server configuration for tests
+server:
+  port: 0  # Random port for tests
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: TEST_SESSION
+        http-only: true
+
+# Swagger disabled in tests
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
