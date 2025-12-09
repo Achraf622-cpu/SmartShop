@@ -1,7 +1,10 @@
 package org.example.smartshopv2.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.example.smartshopv2.enums.OrderStatus;
 
 import java.time.LocalDateTime;
@@ -11,48 +14,56 @@ import java.util.List;
 @Entity
 @Table(name = "orders")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Order {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
-    
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
-    
+
     @Column(nullable = false)
     private Double subtotalHT;
-    
+
     private String promoCode;
-    
+
     @Column(nullable = false)
+    @Builder.Default
     private Double discountAmount = 0.0;
-    
+
     @Column(nullable = false)
     private Double amountAfterDiscount;
-    
+
     @Column(nullable = false)
     private Double tva;
-    
+
     @Column(nullable = false)
     private Double totalTTC;
-    
+
     @Column(nullable = false)
     private Double montantRestant;
-    
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<Payment> payments = new ArrayList<>();
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private OrderStatus status = OrderStatus.PENDING;
-    
+
     @Column(nullable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
-    
+
     private LocalDateTime updatedAt;
 }

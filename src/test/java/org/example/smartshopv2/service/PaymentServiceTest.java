@@ -38,52 +38,55 @@ import static org.junit.jupiter.api.Assertions.*;
 @org.springframework.test.context.ActiveProfiles("test")
 @DisplayName("PaymentService Integration Tests")
 class PaymentServiceTest {
-    
+
     @Autowired
     private PaymentService paymentService;
-    
+
     @Autowired
     private OrderRepository orderRepository;
-    
+
     @Autowired
     private ClientRepository clientRepository;
-    
+
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private PaymentRepository paymentRepository;
-    
+
     private Order testOrder;
-    
+
     @BeforeEach
     void setUp() {
         // Create test user and client
-        User user = new User();
-        user.setUsername("testclient");
-        user.setPassword("pass123");
-        user.setRole(Role.CLIENT);
+        User user = User.builder()
+                .username("testclient")
+                .password("pass123")
+                .role(Role.CLIENT)
+                .build();
         user = userRepository.save(user);
-        
-        Client client = new Client();
-        client.setUser(user);
-        client.setCompanyName("Test Corp");
-        client.setLoyaltyLevel(LoyaltyLevel.BASIC);
+
+        Client client = Client.builder()
+                .user(user)
+                .companyName("Test Corp")
+                .loyaltyLevel(LoyaltyLevel.BASIC)
+                .build();
         client = clientRepository.save(client);
-        
+
         // Create test order
-        testOrder = new Order();
-        testOrder.setClient(client);
-        testOrder.setSubtotalHT(25000.0);
-        testOrder.setDiscountAmount(0.0);
-        testOrder.setAmountAfterDiscount(25000.0);
-        testOrder.setTva(5000.0);
-        testOrder.setTotalTTC(30000.0);
-        testOrder.setMontantRestant(30000.0);
-        testOrder.setStatus(OrderStatus.PENDING);
+        testOrder = Order.builder()
+                .client(client)
+                .subtotalHT(25000.0)
+                .discountAmount(0.0)
+                .amountAfterDiscount(25000.0)
+                .tva(5000.0)
+                .totalTTC(30000.0)
+                .montantRestant(30000.0)
+                .status(OrderStatus.PENDING)
+                .build();
         testOrder = orderRepository.save(testOrder);
     }
-    
+
     @AfterEach
     void tearDown() {
         paymentRepository.deleteAll();
@@ -91,7 +94,7 @@ class PaymentServiceTest {
         clientRepository.deleteAll();
         userRepository.deleteAll();
     }
-    
+
     @Test
     @DisplayName("Should add ESPECES payment and mark as ENCAISSE immediately")
     void testAddPayment_Especes_MarkedAsEncaisse() {
@@ -102,22 +105,22 @@ class PaymentServiceTest {
         request.setTypePaiement("ESPECES");
         request.setReference("RECU-001");
         request.setDatePaiement(LocalDateTime.now());
-        
+
         // ACT
         PaymentResponse response = paymentService.addPayment(request);
-        
+
         // ASSERT
         assertNotNull(response);
         assertEquals(5000.0, response.getMontant());
         assertEquals("ESPECES", response.getTypePaiement());
         assertEquals(PaymentStatus.ENCAISSE, response.getStatus());
         assertNotNull(response.getDateEncaissement());
-        
+
         // Verify order montantRestant updated
         Order updatedOrder = orderRepository.findById(testOrder.getId()).get();
         assertEquals(25000.0, updatedOrder.getMontantRestant());
     }
-    
+
     @Test
     @DisplayName("Should add CHEQUE payment and mark as EN_ATTENTE")
     void testAddPayment_Cheque_MarkedAsEnAttente() {
@@ -130,20 +133,20 @@ class PaymentServiceTest {
         request.setBanque("BMCE Bank");
         request.setDatePaiement(LocalDateTime.now());
         request.setDateEcheance(LocalDateTime.now().plusDays(30));
-        
+
         // ACT
         PaymentResponse response = paymentService.addPayment(request);
-        
+
         // ASSERT
         assertEquals("CHEQUE", response.getTypePaiement());
         assertEquals(PaymentStatus.EN_ATTENTE, response.getStatus());
         assertNull(response.getDateEncaissement());
-        
+
         // Verify order montantRestant still updated
         Order updatedOrder = orderRepository.findById(testOrder.getId()).get();
         assertEquals(18000.0, updatedOrder.getMontantRestant());
     }
-    
+
     @Test
     @DisplayName("Should throw exception when cash payment exceeds 20,000 DH")
     void testAddPayment_CashExceedsLimit_ThrowsException() {
@@ -154,40 +157,41 @@ class PaymentServiceTest {
         request.setTypePaiement("ESPECES");
         request.setReference("RECU-001");
         request.setDatePaiement(LocalDateTime.now());
-        
+
         // ACT & ASSERT
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             paymentService.addPayment(request);
         });
-        
+
         // Verify the exception message mentions the limit
         String message = exception.getMessage().toLowerCase();
         assertTrue(message.contains("20") || message.contains("20,000") || message.contains("cash"),
                 "Exception message should mention cash limit: " + exception.getMessage());
     }
-    
+
     @Test
     @DisplayName("Should encaisser CHEQUE payment successfully")
     void testEncaisserPayment_Cheque_UpdatesStatus() {
         // ARRANGE
-        Payment payment = new Payment();
-        payment.setOrder(testOrder);
-        payment.setNumeroPaiement(1);
-        payment.setMontant(12000.0);
-        payment.setTypePaiement("CHEQUE");
-        payment.setReference("CHQ-123");
-        payment.setDatePaiement(LocalDateTime.now());
-        payment.setStatus(PaymentStatus.EN_ATTENTE);
+        Payment payment = Payment.builder()
+                .order(testOrder)
+                .numeroPaiement(1)
+                .montant(12000.0)
+                .typePaiement("CHEQUE")
+                .reference("CHQ-123")
+                .datePaiement(LocalDateTime.now())
+                .status(PaymentStatus.EN_ATTENTE)
+                .build();
         payment = paymentRepository.save(payment);
-        
+
         // ACT
         PaymentResponse response = paymentService.encaisserPayment(payment.getId());
-        
+
         // ASSERT
         assertEquals(PaymentStatus.ENCAISSE, response.getStatus());
         assertNotNull(response.getDateEncaissement());
     }
-    
+
     @Test
     @DisplayName("Should reject payment and restore montantRestant")
     void testRejeterPayment_RestoresMontantRestant() {
@@ -199,24 +203,24 @@ class PaymentServiceTest {
         request.setTypePaiement("CHEQUE");
         request.setReference("CHQ-BAD");
         request.setDatePaiement(LocalDateTime.now());
-        
+
         PaymentResponse addedPayment = paymentService.addPayment(request);
-        
+
         // Verify montantRestant was reduced
         Order orderAfterPayment = orderRepository.findById(testOrder.getId()).get();
         assertEquals(25000.0, orderAfterPayment.getMontantRestant());
-        
+
         // ACT - Reject the payment
         PaymentResponse rejectedPayment = paymentService.rejeterPayment(addedPayment.getId());
-        
+
         // ASSERT
         assertEquals(PaymentStatus.REJETE, rejectedPayment.getStatus());
-        
+
         // Verify montantRestant restored
         Order orderAfterReject = orderRepository.findById(testOrder.getId()).get();
         assertEquals(30000.0, orderAfterReject.getMontantRestant());
     }
-    
+
     @Test
     @DisplayName("Should create multiple payments with sequential numbers")
     void testAddPayment_MultiplePayments_SequentialNumbers() {
@@ -228,7 +232,7 @@ class PaymentServiceTest {
         request1.setReference("RECU-001");
         request1.setDatePaiement(LocalDateTime.now());
         PaymentResponse payment1 = paymentService.addPayment(request1);
-        
+
         PaymentRequest request2 = new PaymentRequest();
         request2.setOrderId(testOrder.getId());
         request2.setMontant(10000.0);
@@ -236,7 +240,7 @@ class PaymentServiceTest {
         request2.setReference("RECU-002");
         request2.setDatePaiement(LocalDateTime.now());
         PaymentResponse payment2 = paymentService.addPayment(request2);
-        
+
         PaymentRequest request3 = new PaymentRequest();
         request3.setOrderId(testOrder.getId());
         request3.setMontant(10000.0);
@@ -244,12 +248,12 @@ class PaymentServiceTest {
         request3.setReference("RECU-003");
         request3.setDatePaiement(LocalDateTime.now());
         PaymentResponse payment3 = paymentService.addPayment(request3);
-        
+
         // ASSERT
         assertEquals(1, payment1.getNumeroPaiement());
         assertEquals(2, payment2.getNumeroPaiement());
         assertEquals(3, payment3.getNumeroPaiement());
-        
+
         // Verify order fully paid
         Order finalOrder = orderRepository.findById(testOrder.getId()).get();
         assertEquals(0.0, finalOrder.getMontantRestant());
