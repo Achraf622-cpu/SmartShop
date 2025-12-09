@@ -1,11 +1,17 @@
 package org.example.smartshopv2.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.example.smartshopv2.enums.LoyaltyLevel;
 
 import java.time.LocalDateTime;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ClientResponse {
     private Long id;
     private String companyName;
